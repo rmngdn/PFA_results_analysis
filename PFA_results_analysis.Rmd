@@ -1,0 +1,187 @@
+---
+title: "PFA's results analysis"
+output: html_notebook
+---
+
+Try to find relevant clusters in the GBM dataset.
+
+## PFA results
+
+```{r include=FALSE}
+setwd('~/Documents/Local_Work/Clustering')
+
+library(SNFtool)
+library(cluster)
+library(ggplot2)
+source('subfonctions.R')
+library(CancerSubtypes)
+```
+
+```{r}
+#load the results
+Y_Test <- as.matrix(read.csv("Y_Test.csv", header = FALSE))
+Y_Test <- t(Y_Test)
+Y_cent <- as.matrix(read.csv("Y_cent.csv", header = FALSE))
+Y_cent <- t(Y_cent)
+Y_norm <- as.matrix(read.csv("Y_norm.csv", header = FALSE))
+Y_norm <- t(Y_norm) 
+```
+
+
+
+
+
+## SNF on GBM
+
+```{r}
+n <- 215
+Knn <- 20
+t <- 30
+alpha <- 0.5
+W <- SNFCalc(n = n, t = t, Knn = Knn, alpha = alpha)
+group <- spectralClustering(W, 3)
+#displayClusters(W, group)
+```
+
+It's far better with SNF but it's data that is provided by the authors of SNF method so this is not so surprising...
+
+Let's try with the data provided by the PFA authors
+
+# Data from PFA authors
+
+
+```{r}
+clusterQuality(Y_Test, 2:12)
+```
+```{r}
+plotPC(Y_Test,1:7)
+
+```
+
+
+Let's try SNF on the data from the authors of PFA !
+
+```{r}
+names <- list('data_gene_expression.csv','data_methy_expression.csv','data_mirna_expression.csv')
+datasetPFApack <- lapply(names,function(name) read.table(paste0("~/Documents/Local_Work/PFA to R/TestData/",name), header = TRUE, sep = "," ))
+datasetPFApack <- lapply(datasetPFApack, function(data) {return(as.matrix(data[,-1]))})
+```
+
+```{r}
+W <- SNFCalc2(datasetPFApack,10,0.5,30)
+
+for (C in 3:10){
+  group <- spectralClustering(W,C)
+  displayClusters(W,group)
+}
+```
+
+Not so bad, but let's see whats SNF gives on random data:
+
+```{r}
+Wtest <- matrix(rnorm(100*100),100,100)
+dist <- dist2(Wtest,Wtest)
+affi <- affinityMatrix(dist, K = 10)
+group <- spectralClustering(affi, 6)
+displayClusters(affi, group)
+```
+
+
+
+
+
+## Some tests on data
+
+We want to see how the data are preprocessed
+
+
+
+
+```{r}
+source('subfonctions.R')
+sd_mean(datasetPFApack)  
+
+
+```
+As we can see, the data is normalized !
+
+```{r}
+#Test on data list
+data(dataL)
+dummyDataSet <- dataL
+rm(dataL)
+sd_mean(dummyDataSet)
+```
+The dummy data set is not normalized
+
+The GBM is supposed to be normalized but let's have a look:
+
+```{r}
+listName <- list("~/Documents/Local_Work/GBM/GLIO_Gene_Expression.txt","~/Documents/Local_Work/GBM/GLIO_Mirna_Expression.txt","~/Documents/Local_Work/GBM/GLIO_Methy_Expression.txt")
+GBM_data <- lapply(listName, function(name) {return(read.table(name, header = TRUE))})
+dim(GBM_data[[1]])
+sd_mean(GBM_data)
+```
+
+It's normalized as well !
+
+Let's try something: aplly PFA on dummy data:
+- centered
+- normalized
+- raw
+
+ 
+```{r}
+# data(dataL)
+# raw <- lapply(dataL,t)
+# dim(dataL[[1]])
+# normalized <- lapply(dataL, standardNormalization)
+# normalized <- lapply(normalized, t)
+# 
+# centered <- lapply(dataL, function(data) {return(t(data) - (1/300)*t(data)%*% matrix(1,300,300))})
+# 
+# writer2 <- function(i,dataL,name) {
+#   write.csv(dataL[[i]], paste0(name,"Data_",i,".csv"))
+# }
+# lapply(1:2, function(i) writer2(i,centered, "cent"))
+# lapply(1:2, function(i) writer2(i,normalized, "norm"))
+# lapply(1:2, function(i) writer2(i,raw, "raw"))
+```
+
+PFA DID NOT WORK with the raw data, because the algorithms need the data to be centered at least !
+
+Let's see the other results:
+
+
+```{r}
+#plotPC(Y_norm, 1:4)
+
+```
+```{r}
+#plotPC(Y_cent, 1:5)
+```
+
+```{r}
+clusterQuality(Y_norm, 3) #3 clusters in the data
+clusterQuality(Y_cent, 3)
+```
+
+## With distance matrix
+
+```{r}
+pam.clusterQuality(Y_Test, Klist = 2:5)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
